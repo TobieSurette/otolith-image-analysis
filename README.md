@@ -1,6 +1,7 @@
 # Automation problems in otolith image analysis
      
-1.	Determine the **absolute scale** of an image using the ruler contained in the photo.
+## Strategy 
+1. Determine the **absolute scale** of an image using the ruler contained in the photo.
 
 2. **Contour of the otolith**:
    - Identify the **set of points** which make up the contour.
@@ -22,4 +23,11 @@
    - How do the average intensities of the rings vary with the size of the rings (i.e. this is a way of getting a standardized radial intensity profile).
    - Use radial scans from the nucleus to the edge of the otolith and check if their averages remove unwanted noise (i.e. boost the signals from “true” rings).
    - How the “true” rings identified in the annotated otolith images compare with the observed rings in images. What criteria are used to dismiss “false” rings?
+
+## Related mathematical problems
+
+### Twinning of two intensity profiles:
+
+Say we have two image intensity profiles for two lines starting at the nucleus to the edge of an otolith. Even if we standardize for distance, their features (e.g. annuli) do not generally line up. 
+The problem is this : can we create a univariate function that warps the distance in such a way that makes the features of one profile line up with the other?
 
