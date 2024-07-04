@@ -7,7 +7,62 @@ I <- readJPEG("photos/examples/Plaice.jpg", native = FALSE)
 I <- 0.2989 * I[,,1] + 0.5870 * I[,,2] +  0.1141 * I[,,3]
 
 # Display image:
-image(1:nrow(I), 1:ncol(I), I, col = grey.colors(100))
+#image(1:nrow(I), 1:ncol(I), I, col = grey.colors(100))
+ix <- seq(1, nrow(I), by = 3)
+iy <- seq(1, ncol(I), by = 3)
+image((1:nrow(I))[ix], (1:ncol(I))[iy], (I[ix, iy] - mean(I[ix, iy])), col = grey.colors(100))
+
+x0 <- 805
+x1 <- 240
+y0 <- 805
+y1 <- 1035
+t <- seq(0, 1, len = 1000)
+xx <- x0 + (x1-x0) * t
+yy <- y0 + (y1-y0) * t
+xx <- unique(cbind(round(xx), round(yy)))
+yy <- xx[,2]
+xx <- xx[,1]
+dd <- sqrt((xx - x0)^2 + (yy - y0)^2)
+
+lines(xx, yy)
+points(805, 805, pch = 21, bg = "red2")
+points(240, 1035, pch = 21, bg = "red2")
+
+library(gulf.graphics)
+rx <- c(262, 283, 302, 342, 392, 445, 510, 660)
+ry <- rep(NA, length(rx))
+ri <- rep(NA, length(rx))
+for (i in 1:length(rx)){
+   ri[i] <- which.min(abs(xx-rx[i]))
+   ry[i] <- yy[ri[i]]
+}
+points(rx, ry, pch = 21, bg = "red2")
+
+zz <- rep(NA, length(xx))
+for (i in 1:length(xx)) zz[i] <- I[xx[i], yy[i]]
+plot(dd, zz, type = "l")
+points(dd[ri], zz[ri], pch = 21, bg = "red")
+
+plot(1:length(ri), dd[ri])
+tt <- 1:length(ri)
+tt2 <- tt * tt
+model <- lm(dd[ri] ~ tt2 + tt + 1)
+points(tt, predict(model), pch = 21, bg = "red")
+
+dm <- predict(model, newdata = list(tt = seq(0, 9, len = 1000), tt2 = seq(0, 9, len = 1000)^2))
+age <- approx(dm, seq(0, 9, len = 1000), dd)$y
+plot(dd, age)
+
+plot(age, zz, type = "l")
+vline(1:8, lty = "dashed")
+
+plot(dd, zz)
+model <- lm(zz ~ poly(dd, 2))
+lines(dd, predict(model), col = "red")
+
+plot(log(max(dd) - dd), zz - predict(model), type = "l", lwd = 2, col = "red3", xlim = c(3, 7), ylim = c(-0.1, 0.05))
+vline(log(max(dd) - dd[ri]), lty = "dashed")
+
 
 # Intensity-weighted coordinate average:
 cluster <- kmeans(as.numeric(I), 2)$cluster
@@ -45,6 +100,8 @@ logit <- function(x) return(log(x/(1-x)))
 angle <- seq(0, pi, len = 100)[-1]
 rho <- -max(c(ncol(I), nrow(I))):max(c(ncol(I), nrow(I)))
 res <- NULL
+x0 <- 805
+y0 <- 805
 for (i in 1:length(angle)){
    print(i)
    # Determine points along ray:
@@ -141,4 +198,37 @@ lines(xx, yy)
 points(x0, y0, pch = 21, bg = "red2", cex = 1.25)
 points(xx[ix[1]], yy[ix[1]], pch = 21, bg = "red2")
 points(xx[ix[2]], yy[ix[2]], pch = 21, bg = "red2")
+
+
+theta = c(x0 = 805, y0 = 805,
+          radius = 400, 
+          mu = c(mean(I[cluster == 1]), mean(I[cluster == 2])), 
+          log.sigma = log(c(sd(I[cluster == 1]), sd(I[cluster == 2]))))
+
+x0 <- 805
+y0 <- 805
+xx <- repvec(1:nrow(I), ncol = ncol(I)) 
+yy <- repvec(1:ncol(I), nrow = nrow(I)) 
+
+loglike <- function(theta, xx, yy, I){
+   dd <- sqrt((xx - x0)^2 + (yy - y0)^2)
+   ix <- which(dd <= theta["radius"])
+   mu <- theta[grep("mu", names(theta))]
+   sigma <- exp(theta[grep("log.sigma", names(theta))])
+   v <- sum(dnorm(I[ix], mu[1], sigma[1], log = TRUE)) + sum(dnorm(I[-ix], mu[2], sigma[2], log = TRUE))
+   return(-v)
+}
+   
+loglike(theta, xx, yy, I)
+theta <- optim(theta, loglike, xx = xx, yy = yy, I = I, control = list(trace = 3))$par   
+   
+clg()
+ix <- seq(1, nrow(I), by = 2)
+iy <- seq(1, ncol(I), by = 2)
+image((1:nrow(I))[ix], (1:ncol(I))[iy], I[ix,iy], col = grey.colors(100))
+
+angle <- seq(0, 2*pi, len = 100)
+points(theta["x0"] + theta["radius"] * cos(angle), theta["y0"] + theta["radius"] * sin(angle), pch = 21, bg = "red")
+
+
 
