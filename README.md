@@ -24,10 +24,25 @@
    - Use radial scans from the nucleus to the edge of the otolith and check if their averages remove unwanted noise (i.e. boost the signals from “true” rings).
    - How the “true” rings identified in the annotated otolith images compare with the observed rings in images. What criteria are used to dismiss “false” rings?
 
-## Related mathematical problems
+## Analytical problems 
 
-### Twinning of two intensity profiles:
+### Similarity measure between two warped vectors 
 
 Say we have two image intensity profiles for two lines starting at the nucleus to the edge of an otolith. Even if we standardize for distance, their features (e.g. annuli) do not generally line up. 
-The problem is this : can we create a univariate function that warps the distance in such a way that makes the features of one profile line up with the other?
+The problem is this : can we create a univariate function that warps the distance in such a way that makes the features of one profile line up with the other? The matching between two vectors proceeds on two fronts: a warping of the coordinates and tranforming the intensities (signal) from one vector so that it is on the same scale as the other. 
+ - Cumulative density function of a beta distribution provides 
+
+### Squaring the Otolith
+Look up image intensties along a set of rays that goes from the nucleus to edge of the otolith, at regular intervals around the otolith. This produces an unwrapped otolith image. The goal at this point is this:
+- Transform the intensities along each ray such that the otolith rings are aligned and the intensities are normalized to some reference vector.
+- Stretch out the squared otolith in such a way that its rings are more or less evenly spaced.
+
+### Modelling intensities
+Rings are periodic events, model the variations using a repeating element, e.g. a periodic spline. 
+
+
+
+
+
+
 
