@@ -10,7 +10,7 @@ bspline.default <- function(df, knots, degree = 3, type = "regular", coefficient
       d <- (df - degree)
       step <- (1 / d)
       if (missing(start)) lower <- (-degree*step) else lower <- 0
-      if (missing(end)) upper <- (1+degree*step) else upper <- 1 
+      if (missing(end))   upper <- (1+degree*step) else upper <- 1 
       knots <- seq(lower, upper, by = step) 
       wrapped <- TRUE
    }
@@ -31,7 +31,7 @@ bspline.default <- function(df, knots, degree = 3, type = "regular", coefficient
    }
    
    # Wrap knots if spline type is periodic:
-   if ((type == "periodic")&(!wrapped)) knots <- c(knots, knots[length(knots)] + (knots[1:degree] - knots[1])) 
+   if ((type == "periodic") & !wrapped) knots <- c(knots, knots[length(knots)] + (knots[1:degree] - knots[1])) 
    
    # Build zeroth-degree basis functions:
    basis <- list()
