@@ -166,23 +166,96 @@ Division_image = function(image_originale){
   return(list(gauche = imageG, droite = imageD))
 }
 
+
+Compte_anneau = function(Sweep_Warp){
+  SW_moy = colMeans(Sweep_Warp)
+  
+  plot(SW_moy,type = "l")
+  
+  JT = lm(y~bs(1:length(SW_moy), df=5), data = data.frame(x=1:length(SW_moy), y=SW_moy))
+  smooth_SW = smooth.spline(1:length(SW_moy),SW_moy,spar = 0.2)$y
+  
+  # Superpose SW_moy après être lissé
+  lines(smooth_SW, col = "blue")
+  
+  JT_R = predict(JT, data.frame(x=1:length(SW_moy)))
+  
+  # Ajoute la spline qui suit la tendance de SW_moy sans les oscillations
+  lines(1:length(SW_moy), JT_R, col="red")
+  
+  # Sorte de normalisation des données pour qu'elles oscillent autour
+  # d'un point fixe (1) au lieu d'osciller en descendant
+  SW_moy = smooth_SW/JT_R
+  
+  # Trouve les minimums locaux de SW_moy
+  dif = c()
+  anneau = c()
+  pente = 1
+  for(i in 1:(length(SW_moy)-1)){
+    dif = c(dif, SW_moy[i+1] - SW_moy[i])
+    
+    if(dif[i] < 0){
+      pente = -1
+    }
+    else{
+      if(pente == -1){
+        anneau = c(anneau, i)
+      }
+      pente = 1
+    }
+  }
+  
+  # Graphiques qui montre les anneaux sur la courbe des moyennes d'intensité
+  # et sur l'image Sweep_Warp
+  plot(seq(0,1,len=length(SW_moy)), SW_moy, type="l", lwd=2)
+  abline(v=seq(0,1,len=length(SW_moy))[anneau], col="red")
+  grid()
+  
+  plot(as.cimg(Grain_filter(Sweep_Warp,3,2)),xlim = c(0,length(Sweep_Warp[,1])), ylim=c(0,length(Sweep_Warp[1,])), axes=F)
+  axis(1, at = seq(1,length(Sweep_Warp[,1]),len=5), labels = c(0, "pi/2", "pi", "3pi/2", "2pi"))
+  axis(2, at = seq(0,length(Sweep_Warp),5))
+  title(main = "Warp du sweep de l'otolithe (init = param du dernier)", xlab = "Angle", ylab = "Points pris des rayons")
+  abline(h=anneau, col="red")
+  
+  # Affiche le nombre d'anneaux trouvé
+  library("emoji")
+  plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+  text(x = 0.5, y = 0.5, paste("Le nombre d'anneaux est \n définitivement, absolument,\n 100% sûr : ",
+                               length(anneau), "\n", emoji("grinning face"), emoji("thumbs up")),
+       cex = 1.6, col = "black")
+  
+  return(anneau)
+}
+
+
+
+######################################################################
+#
+# Initialisation de variables
+#
+######################################################################
+nb_melange = 3 # Prend plus longtemps plus il y a de mélanges
+
+n_points = 400 # Prend plus longtemps plus il y a de points
+n_rayons = 400
+
+grain = 2
 ######################################################################
 #
 # Début du main code
 #
 ######################################################################
 
-#old_mar = par(mar = par()$mar)
 
 #image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1993-RES-40-1087-photo-0001-image-scale-150.jpg")
-image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1993-RES-40-1333-photo-0001-image-scale-150.jpg")
+#image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1993-RES-40-1333-photo-0001-image-scale-150.jpg")
 #image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1994-COMM-40-0034-photo-0001-image-scale-150.jpg")
-#image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/Plaice.jpg")
+image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/Plaice.jpg")
 
-image_divise = Division_image(image_originale)
-rm(image_originale)
-image_originale = as.cimg(image_divise$droite)
-rm(image_divise)
+# image_divise = Division_image(image_originale)
+# rm(image_originale)
+# image_originale = as.cimg(image_divise$droite)
+# rm(image_divise)
 
 image_grise = grayscale(image_originale) # Transforme l'image en gris
 image_grise = as.matrix(image_grise[,,1,1])
@@ -209,90 +282,32 @@ Contour = Contour[order(t), ]
 
 # Spline des x et y du contour de l'otolithe
 angles = seq(0,2*pi, length.out = length(Contour[,1])+1)
-# SX = lm(y~bs(angles, df=400), data = data.frame(x=angles, y=c(Contour[,1], Contour[1,1])))
-# SY = lm(y~bs(angles, df=400), data = data.frame(x=angles, y=c(Contour[,2], Contour[1,2])))
-# SX = list(x = angles, y = predict(SX, data.frame(x=angles)))
-# SY = list(x = angles, y = predict(SY, data.frame(x=angles)))
-
 SX = spline(angles, c(Contour[,1], Contour[1,1]), n=length(Contour[,1]), method = "periodic")
 SY = spline(angles, c(Contour[,2], Contour[1,2]), n=length(Contour[,1]), method = "periodic")
 angles = seq(0,2*pi, length.out = length(Contour[,1]))
 
 # On prend une tranche de l'otolithe
-Tranche = Tranche_Contour(image, noyau, Contour, n_points = 400, angle = pi/4) #matrix(c(SX$y[-1], SY$y[-1]),nrow(Contour),ncol(Contour))
+Tranche = Tranche_Contour(image, noyau, Contour, n_points = n_rayons, angle = pi/4)
   
 # On fait le sweep de l'otolithe de 0 à 2pi et on l'étend de sorte
 # que le noyau est à y=0 et que le contour soit à 
 # y = (# points pris par rayon). Les distances sont normalisées par le
 # nombre de points pris par rayon
-Sweep = t(Sweep_anneaux(noyau,image_grise,Tranche,400))
+Sweep = t(Sweep_anneaux(noyau,image_grise,Tranche,n_points))
   
 # On ajoute plus de contraste
-Sweep2 = Contraste(Grain_filter(Sweep,1))
-#Sweep2 = adaptive_equalize(Grain_filter(Sweep,3))
+Sweep2 = Contraste(Grain_filter(Sweep, grain))
   
 # On trouve l'image qui a été transformé pour faire en sorte que les
 # anneaux sont alignés
-Transforme = Transformation(noyau,Tranche,Sweep2)
+Transforme = Transformation(noyau,Tranche,Sweep2,nb_melange = nb_melange)
 param=Transforme$param
 Sweep_Warp = Transforme$Transforme
   
 # On affiche les graphiques
-Affichage_otolithe(image_originale, Contour, SX, SY, noyau, Sweep2, Sweep_Warp, angles, param, nb_melange = 5)
+Affichage_otolithe(image_originale, Contour, SX, SY, noyau, Sweep2, Sweep_Warp, angles, param, nb_melange)
 
-
-# 
-# #Align = function(image, Contour, noyau){
-#   nom = c(paste0("x",1:nrow(Sweep2)), paste0("y",1:nrow(Sweep2)))
-#   init = c(seq(100,101,len = nrow(Sweep2)), 1:400)
-#   init = setNames(init, nom)
-#   
-#   S = optim(init,Warp_spline,image=Sweep2, control = list("maxit" = 10000))
-# #}
-
-
-
-SW_moy = colMeans(Grain_filter(Sweep_Warp,10,2))
-                  
-plot(SW_moy,type = "l")
-
-JT = lm(y~bs(1:length(SW_moy), df=5), data = data.frame(x=1:length(SW_moy), y=SW_moy))
-smooth_SW = smooth.spline(1:length(SW_moy),SW_moy)$y
-
-lines(smooth_SW, col = "blue")
-
-JT_R = predict(JT, data.frame(x=1:length(SW_moy)))
-
-lines(1:length(SW_moy), JT_R, col="red")
-
-SW_moy = smooth_SW/JT_R
-
-dif = c()
-anneau = c()
-pente = 1
-for(i in 1:(length(SW_moy)-1)){
-  dif = c(dif, SW_moy[i+1] - SW_moy[i])
-  
-  if(dif[i] < 0){
-    pente = -1
-  }
-  else{
-    if(pente == -1){
-      anneau = c(anneau, i)
-    }
-    pente = 1
-  }
-}
-
-plot(seq(0,1,len=length(SW_moy)), SW_moy, type="l", lwd=2)
-abline(v=seq(0,1,len=length(SW_moy))[anneau], col="red")
-grid()
-
-plot(as.cimg(Grain_filter(Sweep_Warp,3,2)),xlim = c(0,length(Sweep_Warp[,1])), ylim=c(0,length(Sweep_Warp[1,])), axes=F)
-axis(1, at = seq(1,length(Sweep_Warp[,1]),len=5), labels = c(0, "pi/2", "pi", "3pi/2", "2pi"))
-axis(2, at = seq(0,length(Sweep),5))
-title(main = "Warp du sweep de l'otolithe (init = param du dernier)", xlab = "Angle", ylab = "Points pris des rayons")
-abline(h=anneau, col="red")
+anneau = Compte_anneau(Sweep_Warp)
 
 # Test de la fonction d'inversion du warp
 ######################################################################
@@ -318,15 +333,18 @@ for(i in 1:ncol(IW2)){
 }
 #######################################################################
 
-#plot(sqrt(Re(fft(SW_moy))^2+Im(fft(SW_moy))^2), type="l", ylim=c(0,10))
-#grid()
-#a=stats::spectrum(SW_moy)
 
-library("emoji")
-#par(mar = c(0,0,0,0))
-plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
-text(x = 0.5, y = 0.5, paste("Le nombre d'anneaux est \n définitivement, absolument,\n 100% sûr : ",
-                             length(anneau), "\n", emoji("grinning face"), emoji("thumbs up")),
-     cex = 1.6, col = "black")
+# 
+# #Align = function(image, Contour, noyau){
+#   nom = c(paste0("x",1:nrow(Sweep2)), paste0("y",1:nrow(Sweep2)))
+#   init = c(seq(100,101,len = nrow(Sweep2)), 1:400)
+#   init = setNames(init, nom)
+#   
+#   S = optim(init,Warp_spline,image=Sweep2, control = list("maxit" = 10000))
+# #}
 
-#par(mar = old_mar)
+
+
+
+
+
