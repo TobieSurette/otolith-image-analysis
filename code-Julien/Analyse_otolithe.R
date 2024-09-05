@@ -2,6 +2,9 @@ library(MASS)
 library(readxl)
 library(imager)
 library(splines)
+library(SpatialPack)
+library(mmand)
+library(e1071)
 
 set.seed(2024)
 
@@ -20,7 +23,7 @@ Affichage_rayon = function(Ref, R, avant){
          fill = c("black", "cyan3", "orange3"), cex = 0.7)
 }
 
-Affichage_otolithe = function(image, Contour, SX, SY, noyau, Sweep, Sweep_Warp, angles, param, nb_melange=1){
+Affichage_otolithe = function(image, Contour, SX, SY, noyau, Sweep, Sweep_Warp, angles, param, angle_tranche = 1/4, nb_melange=1){
   # Graphique des courbes x et y du contour séparé avec leurs splines
   plot(angles, Contour[,1], type = "o", xlab = "angle", ylab = "", col = "red", lwd = 2,
        ylim = c(min(c(min(Contour[,1]), min(Contour[,2]))), c(max(c(max(Contour[,1]), max(Contour[,2]))))))
@@ -44,13 +47,13 @@ Affichage_otolithe = function(image, Contour, SX, SY, noyau, Sweep, Sweep_Warp, 
   par(mfrow = c(1,2))
   # Graphique du sweep (avec contraste) avant la transformation
   plot(as.cimg(Sweep),xlim = c(0,length(Sweep[,1])), ylim=c(0,length(Sweep[1,])),axes = F)
-  axis(1, at = seq(1,length(Sweep[,1]),len=5), labels = c(0, "pi/2", "pi", "3pi/2", "2pi"))
+  axis(1, at = seq(1,length(Sweep[,1]),len=5), labels = c(paste0("-pi/",1/angle_tranche), paste0("-pi/",2/angle_tranche), 0, paste0("pi/",2/angle_tranche), paste0("pi/",1/angle_tranche)))
   axis(2, at = seq(0,length(Sweep),5))
   title(main = "Sweep de l'otolithe", xlab = "Angle", ylab = "Points pris des rayons")
   
   # Graphique du sweep transformé pour que les anneaux soient alignés
   plot(as.cimg(Sweep_Warp),xlim = c(0,length(Sweep_Warp[,1])), ylim=c(0,length(Sweep_Warp[1,])), axes=F)
-  axis(1, at = seq(1,length(Sweep_Warp[,1]),len=5), labels = c(0, "pi/2", "pi", "3pi/2", "2pi"))
+  axis(1, at = seq(1,length(Sweep_Warp[,1]),len=5), labels = c(paste0("-pi/",1/angle_tranche), paste0("-pi/",2/angle_tranche), 0, paste0("pi/",2/angle_tranche), paste0("pi/",1/angle_tranche)))
   axis(2, at = seq(0,length(Sweep),5))
   title(main = "Warp du sweep de l'otolithe (init = param du dernier)", xlab = "Angle", ylab = "Points pris des rayons")
   par(mfrow = c(1,1))
@@ -73,6 +76,25 @@ Affichage_otolithe = function(image, Contour, SX, SY, noyau, Sweep, Sweep_Warp, 
     lines(1:ncol(Sweep_Warp),T)
     title(main = "Fonctions Warp")
   }
+}
+
+normalisation = function(Sweep_Warp){
+  Sweep_Warp_norm = c()
+  n = nrow(Sweep_Warp)
+  for(i in 1:n){
+    JT = lm(y~bs(1:n, df=5), data = data.frame(x=1:n, y=Sweep_Warp[i,]))
+    smooth_SW = smooth.spline(1:n, Sweep_Warp[i,], spar = 0.2)$y
+    
+    JT_R = predict(JT, data.frame(x=1:n))
+    
+    # Sorte de normalisation des données pour qu'elles oscillent autour
+    # d'un point fixe (1) au lieu d'osciller en descendant
+    Sweep_Warp_norm = rbind(Sweep_Warp_norm, Sweep_Warp[i,]-JT_R)
+  }
+  
+  plot(as.cimg(Sweep_Warp_norm), ylim = c(0,n))
+  
+  return(Sweep_Warp_norm)
 }
 
 Contraste = function(x,c=1){
@@ -167,7 +189,7 @@ Division_image = function(image_originale){
 }
 
 
-Compte_anneau = function(Sweep_Warp){
+Compte_anneau = function(Sweep_Warp, angle_tranche = 1/4){
   SW_moy = colMeans(Sweep_Warp)
   
   plot(SW_moy,type = "l")
@@ -185,7 +207,7 @@ Compte_anneau = function(Sweep_Warp){
   
   # Sorte de normalisation des données pour qu'elles oscillent autour
   # d'un point fixe (1) au lieu d'osciller en descendant
-  SW_moy = smooth_SW/JT_R
+  SW_moy = smooth_SW-JT_R
   
   # Trouve les minimums locaux de SW_moy
   dif = c()
@@ -211,8 +233,8 @@ Compte_anneau = function(Sweep_Warp){
   abline(v=seq(0,1,len=length(SW_moy))[anneau], col="red")
   grid()
   
-  plot(as.cimg(Grain_filter(Sweep_Warp,3,2)),xlim = c(0,length(Sweep_Warp[,1])), ylim=c(0,length(Sweep_Warp[1,])), axes=F)
-  axis(1, at = seq(1,length(Sweep_Warp[,1]),len=5), labels = c(0, "pi/2", "pi", "3pi/2", "2pi"))
+  plot(as.cimg(Sweep_Warp),xlim = c(0,length(Sweep_Warp[,1])), ylim=c(0,length(Sweep_Warp[1,])), axes=F)
+  axis(1, at = seq(1,length(Sweep_Warp[,1]),len=5), labels = c(paste0("-pi/",1/angle_tranche), paste0("-pi/",2/angle_tranche), 0, paste0("pi/",2/angle_tranche), paste0("pi/",1/angle_tranche)))
   axis(2, at = seq(0,length(Sweep_Warp),5))
   title(main = "Warp du sweep de l'otolithe (init = param du dernier)", xlab = "Angle", ylab = "Points pris des rayons")
   abline(h=anneau, col="red")
@@ -246,16 +268,19 @@ grain = 2
 #
 ######################################################################
 
-
+#image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1994-COMM-40-0001-photo-0001-image-scale-250.jpg")
 #image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1993-RES-40-1087-photo-0001-image-scale-150.jpg")
 #image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1993-RES-40-1333-photo-0001-image-scale-150.jpg")
 #image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1994-COMM-40-0034-photo-0001-image-scale-150.jpg")
-image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/Plaice.jpg")
+#image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1994-RES-40-1268-photo-0001-image-scale-250.jpg")
+image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1993-RES-40-1338-photo-0002-image-scale-150.jpg")
+#image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1994-COMM-40-0001-photo-0001-image-scale-250.jpg")
+#image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/plaice.jpg")
 
-# image_divise = Division_image(image_originale)
-# rm(image_originale)
-# image_originale = as.cimg(image_divise$droite)
-# rm(image_divise)
+image_divise = Division_image(image_originale)
+rm(image_originale)
+image_originale = as.cimg(image_divise$droite)
+rm(image_divise)
 
 image_grise = grayscale(image_originale) # Transforme l'image en gris
 image_grise = as.matrix(image_grise[,,1,1])
@@ -266,8 +291,14 @@ image_grise = as.matrix(image_grise[,,1,1])
 # Donne les coordonnées du noyau de l'otolithe
 noyau = Trouver_noyau(0.2, 30, as.cimg(image_grise))
 
+#noyau = optim(noyau,Similitude_des_rayons, image = image_grise, Contour = Contour, n_points=n_rayons)$par
+
 # Donne les coordonnées en désordre du contour de l'otolithe
-Contour = TrouverContour(image_grise, noyau)$coord
+Contour = TrouverContour(image_grise,n_rayons, nb_centre = 5)
+
+pointsContour = Contour$centres
+decoupe = Contour$decoupe
+Contour = Contour$coord
 
 t = c()
 for(i in 1:nrow(Contour)){
@@ -278,7 +309,7 @@ for(i in 1:nrow(Contour)){
   }
 }
 # Replace les coordonnées en ordre
-Contour = Contour[order(t), ]
+Contour = unique(Contour[order(t), ])
 
 # Spline des x et y du contour de l'otolithe
 angles = seq(0,2*pi, length.out = length(Contour[,1])+1)
@@ -293,27 +324,28 @@ Tranche = Tranche_Contour(image, noyau, Contour, n_points = n_rayons, angle = pi
 # que le noyau est à y=0 et que le contour soit à 
 # y = (# points pris par rayon). Les distances sont normalisées par le
 # nombre de points pris par rayon
-Sweep = t(Sweep_anneaux(noyau,image_grise,Tranche,n_points))
+Sweep = t(Sweep_anneaux(noyau,as.matrix(medianblur(as.cimg(image_grise),10)),Tranche,n_points))
   
 # On ajoute plus de contraste
-Sweep2 = Contraste(Grain_filter(Sweep, grain))
+Sweep2 = Contraste(Grain_filter(Sweep, 0))
   
 # On trouve l'image qui a été transformé pour faire en sorte que les
 # anneaux sont alignés
-Transforme = Transformation(noyau,Tranche,Sweep2,nb_melange = nb_melange)
+#k = shapeKernel(c(21,7), type = "box")
+Transforme = Transformation(noyau,Tranche,Sweep2, nb_melange = nb_melange)
 param=Transforme$param
 Sweep_Warp = Transforme$Transforme
   
 # On affiche les graphiques
-Affichage_otolithe(image_originale, Contour, SX, SY, noyau, Sweep2, Sweep_Warp, angles, param, nb_melange)
+Affichage_otolithe(image_originale, Contour, SX, SY, noyau, Sweep2, Sweep_Warp, angles, param, 1/4, nb_melange)
 
-anneau = Compte_anneau(Sweep_Warp)
+anneau = Compte_anneau(Sweep_Warp, 1/4)
 
 # Test de la fonction d'inversion du warp
 ######################################################################
 IW1 = matrix(,400,400)
 for(i in 1:400){
-  indice = (399)*Inverse_Warp((1:400-1)/399, param[i,1], param[i,2])+1
+  indice = (399)*Inverse_Warp((1:400-1)/399, param[i,paste0("a",1:nb_melange)], param[i,paste0("b",1:nb_melange)], c(param[i,paste0("w",1:(nb_melange-1))], 1-sum(param[i,paste0("w",1:(nb_melange-1))])))+1
   IW1[i,] = spline(1:400,Sweep_Warp[i,],xout=indice)$y
 }
 
@@ -324,7 +356,7 @@ par(mfrow = c(1,1))
 
 IW2 = matrix(,400,length(anneau))
 for(i in 1:400){
-  IW2[i,] = (399)*Inverse_Warp((anneau-1)/399, param[i,1], param[i,2])+1
+  IW2[i,] = (399)*Inverse_Warp((anneau-1)/399, param[i,paste0("a",1:nb_melange)], param[i,paste0("b",1:nb_melange)], c(param[i,paste0("w",1:(nb_melange-1))], 1-sum(param[i,paste0("w",1:(nb_melange-1))])))+1
 }
 
 plot(as.cimg(Sweep2),ylim=c(0,400))
@@ -342,6 +374,26 @@ for(i in 1:ncol(IW2)){
 #   
 #   S = optim(init,Warp_spline,image=Sweep2, control = list("maxit" = 10000))
 # #}
+
+
+Sweep_smooth = Sweep2
+for(i in 1:nrow(Sweep2)){
+  Sweep_smooth[i,] = smooth.spline(Sweep2[i,])$y
+}
+# for(j in 1:ncol(Sweep2)){
+#   Sweep_smooth[,j] = smooth.spline(Sweep2[,j])$y
+# }
+plot(as.cimg(matrix(smooth(Sweep2),nrow(Sweep2),ncol(Sweep2))), ylim = c(0,400))
+
+
+ET=matrix(,ncol(Sweep2),length(anneau))
+for(j in 1:length(anneau)){
+  i=1
+  while(anneau[j]-i > 0 && i+anneau[j] < ncol(Sweep2)){
+    ET[i,j] = sd(Sweep_Warp[100,(anneau[j]-i):(anneau[j]+i)])
+    i=i+1
+  }
+}
 
 
 
