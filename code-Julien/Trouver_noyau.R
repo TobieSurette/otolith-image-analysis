@@ -169,7 +169,7 @@ TrouverContour = function(image_grise,n_points, nb_centre = 3){
   
   decoupe = image
   decoupe[which(image == 1, arr.ind = TRUE)] = image_grise[which(image == 1, arr.ind = TRUE)]
-  decoupe[which(decoupe == 0, arr.ind = TRUE)] = NA
+  decoupe[which(decoupe == 0, arr.ind = TRUE)] = 0
   
   return(list(coord = Contour, param = c(0.2,30), decoupe = decoupe, centres = C))
 }
