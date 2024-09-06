@@ -83,7 +83,7 @@ Nombre_Formes = function(image){
 Trouver_noyau = function(image, i=0, g=30){
   k = 0.01
   while (TRUE) {
-    while(sum(clean(as.cimg(image)>i+k, g))>1){
+    while(sum(as.matrix(clean(as.cimg(image)>i+k, g)))>1){
       i=i+k
     }
     if (Nombre_Formes(matrix(clean(as.cimg(image)>i, g),nrow(image),ncol(image))) > 1){
