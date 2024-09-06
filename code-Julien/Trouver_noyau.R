@@ -83,7 +83,7 @@ Nombre_Formes = function(image){
 Trouver_noyau = function(image, i=0, g=30){
   k = 0.01
   while (TRUE) {
-    while(sum(clean(as.cimg(image)>i+k, g))>1){
+    while(sum(as.matrix(clean(as.cimg(image)>i+k, g)))>1){
       i=i+k
     }
     if (Nombre_Formes(matrix(clean(as.cimg(image)>i, g),nrow(image),ncol(image))) > 1){
@@ -169,7 +169,7 @@ TrouverContour = function(image_grise,n_points, nb_centre = 3){
   
   decoupe = image
   decoupe[which(image == 1, arr.ind = TRUE)] = image_grise[which(image == 1, arr.ind = TRUE)]
-  decoupe[which(decoupe == 0, arr.ind = TRUE)] = NA
+  decoupe[which(decoupe == 0, arr.ind = TRUE)] = 0
   
   return(list(coord = Contour, param = c(0.2,30), decoupe = decoupe, centres = C))
 }
