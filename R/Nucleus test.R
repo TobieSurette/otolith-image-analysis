@@ -1,4 +1,5 @@
 library(jpeg)
+library(gulf.graphics)
 
 # Read image:
 I <- readJPEG("photos/examples/Plaice.jpg", native = FALSE)
@@ -10,7 +11,41 @@ I <- 0.2989 * I[,,1] + 0.5870 * I[,,2] +  0.1141 * I[,,3]
 #image(1:nrow(I), 1:ncol(I), I, col = grey.colors(100))
 ix <- seq(1, nrow(I), by = 3)
 iy <- seq(1, ncol(I), by = 3)
-image((1:nrow(I))[ix], (1:ncol(I))[iy], (I[ix, iy] - mean(I[ix, iy])), col = grey.colors(100))
+image((1:nrow(I))[ix], (1:ncol(I))[iy], (I[ix, iy] - mean(I[ix, iy], na.rm = TRUE)), col = grey.colors(100))
+
+Gx <- I[3:nrow(I), 2:(ncol(I)-1)] - I[1:(nrow(I)-2), 2:(ncol(I)-1)]
+Gy <- I[2:(nrow(I)-1), 3:ncol(I)] - I[2:(nrow(I)-1), 1:(ncol(I)-2)]
+Mag <- sqrt(Gx*Gx + Gy*Gy) 
+theta <- atan2(Gy,Gx)
+
+image(theta, col = grey.colors(100))
+
+# Identify contour points:
+dx <- 2:(nrow(I)-1)
+dy <- 2:(ncol(I)-1)
+ix <- !is.na(I[dx,dy]) & (is.na(I[dx-1,dy]) | is.na(I[dx+1,dy]) | is.na(I[dx,dy-1]) | is.na(I[dx,dy+1]))
+image(ix)
+p <- which(ix, arr.ind = TRUE)
+plot(p[, 1], p[, 2], cex = 0.5)
+d <- dist(as.matrix(p))
+H <- hclust(d)
+ix <- cutree(H, 10)
+
+plot(p[,1], p[,2], cex = 0.5)
+points(p[ix==1,1], p[ix==1,2], col = "red")
+points(p[ix==2,1], p[ix==2,2], col = "green2")
+points(p[ix==3,1], p[ix==3,2], col = "blue")
+points(p[ix==4,1], p[ix==4,2], col = "yellow4")
+points(p[ix==5,1], p[ix==5,2], col = "purple")
+
+d <- as.matrix(d)
+hist(I, n = 100)
+
+I[I < 0.3] <- NA
+vline(1000)
+plot(I[1000,])
+plot(I[,1000], type = "l")
+
 
 x0 <- 805
 x1 <- 240
