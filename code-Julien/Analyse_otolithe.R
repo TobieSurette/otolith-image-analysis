@@ -273,14 +273,14 @@ grain = 2
 #image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1993-RES-40-1333-photo-0001-image-scale-150.jpg")
 #image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1994-COMM-40-0034-photo-0001-image-scale-150.jpg")
 #image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1994-RES-40-1268-photo-0001-image-scale-250.jpg")
-image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1993-RES-40-1338-photo-0002-image-scale-150.jpg")
+#image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1993-RES-40-1338-photo-0002-image-scale-150.jpg")
 #image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/1994-COMM-40-0001-photo-0001-image-scale-250.jpg")
-#image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/plaice.jpg")
+image_originale = load.image("C:/Users/THIBODEAUJU/Documents/Otolithe/plaice.jpg")
 
-image_divise = Division_image(image_originale)
-rm(image_originale)
-image_originale = as.cimg(image_divise$droite)
-rm(image_divise)
+# image_divise = Division_image(image_originale)
+# rm(image_originale)
+# image_originale = as.cimg(image_divise$droite)
+# rm(image_divise)
 
 image_grise = grayscale(image_originale) # Transforme l'image en gris
 image_grise = as.matrix(image_grise[,,1,1])
@@ -289,7 +289,7 @@ image_grise = as.matrix(image_grise[,,1,1])
 #tc = TrouverContour(image_grise)$param
 
 # Donne les coordonnées du noyau de l'otolithe
-noyau = Trouver_noyau(0.2, 30, as.cimg(image_grise))
+noyau = Trouver_noyau(image_grise, 0.2, 30)
 
 #noyau = optim(noyau,Similitude_des_rayons, image = image_grise, Contour = Contour, n_points=n_rayons)$par
 
